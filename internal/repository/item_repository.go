@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	dto "go-inventory-playground/internal/dto/items"
 	"go-inventory-playground/internal/entity"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -97,4 +99,40 @@ func (r *ItemRepository) Create(
 	)
 
 	return err
+}
+
+func (r *ItemRepository) FindByID(ctx context.Context, id int) (*entity.Item, error) {
+	query := fmt.Sprintf(`
+		SELECT
+			id,
+			name,
+			description,
+			stock,
+			created_at,
+			updated_at
+		FROM %s.items
+		WHERE id = $1
+		AND deleted_at IS NULL
+	`, r.schema)
+
+	var item entity.Item
+
+	err := r.db.QueryRow(ctx, query, id).Scan(
+		&item.ID,
+		&item.Name,
+		&item.Description,
+		&item.Stock,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &item, nil
 }
