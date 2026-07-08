@@ -3,6 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"strings"
 
 	dto "go-inventory-playground/internal/dto/items"
 	"go-inventory-playground/internal/pkg/response"
@@ -55,4 +57,35 @@ func (h *ItemHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.Success(w, http.StatusCreated, "item created successfully", nil)
+}
+
+func (h *ItemHandler) FindByID(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPath(r.URL.Path)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "invalid item id")
+		return
+	}
+
+	item, err := h.itemRepo.FindByID(r.Context(), id)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "failed to get item")
+		return
+	}
+
+	if item == nil {
+		response.Error(w, http.StatusNotFound, "item not found")
+		return
+	}
+
+	response.Success(w, http.StatusOK, "success", item)
+}
+
+func getIDFromPath(path string) (int, error) {
+	parts := strings.Split(path, "/")
+
+	if len(parts) < 3 || parts[2] == "" {
+		return 0, strconv.ErrSyntax
+	}
+
+	return strconv.Atoi(parts[2])
 }

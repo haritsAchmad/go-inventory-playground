@@ -31,6 +31,14 @@ func New(itemHandler *handler.ItemHandler) *http.ServeMux {
 			)
 		}
 	})
+	mux.HandleFunc("/items/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			itemHandler.FindByID(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
 	return mux
 }
