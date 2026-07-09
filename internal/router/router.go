@@ -6,7 +6,10 @@ import (
 	"go-inventory-playground/internal/handler"
 )
 
-func New(itemHandler *handler.ItemHandler) *http.ServeMux {
+func New(
+	itemHandler *handler.ItemHandler,
+	supplierHandler *handler.SupplierHandler,
+) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", handler.Health)
@@ -39,6 +42,31 @@ func New(itemHandler *handler.ItemHandler) *http.ServeMux {
 			itemHandler.Update(w, r)
 		case http.MethodDelete:
 			itemHandler.Delete(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/suppliers", func(
+		w http.ResponseWriter,
+		r *http.Request,
+	) {
+		switch r.Method {
+		case http.MethodGet:
+			supplierHandler.FindAll(w, r)
+		case http.MethodPost:
+			supplierHandler.Create(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/suppliers/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			supplierHandler.FindByID(w, r)
+		case http.MethodPut:
+			supplierHandler.Update(w, r)
+		case http.MethodDelete:
+			supplierHandler.Delete(w, r)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}

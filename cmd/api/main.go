@@ -25,8 +25,10 @@ func main() {
 
 	itemRepo := repository.NewItemRepository(db, cfg.DBSchema)
 	itemHandler := handler.NewItemHandler(itemRepo)
+	supplierRepo := repository.NewSupplierRepository(db, cfg.DBSchema)
+	supplierHandler := handler.NewSupplierHandler(supplierRepo)
 
-	r := router.New(itemHandler)
+	r := router.New(itemHandler, supplierHandler)
 
 	log.Println("Server running at :" + cfg.AppPort)
 
