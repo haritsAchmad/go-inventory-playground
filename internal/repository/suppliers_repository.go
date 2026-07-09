@@ -5,37 +5,37 @@ import (
 	"errors"
 	"fmt"
 
-	dto "go-inventory-playground/internal/dto/items"
+	dto "go-inventory-playground/internal/dto/suppliers"
 	"go-inventory-playground/internal/entity"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type ItemRepository struct {
+type SupplierRepository struct {
 	db     *pgxpool.Pool
 	schema string
 }
 
-var ErrItemNotFound = errors.New("item not found")
+var ErrSupplierNotFound = errors.New("supplier not found")
 
-func NewItemRepository(db *pgxpool.Pool, schema string) *ItemRepository {
-	return &ItemRepository{
+func NewSupplierRepository(db *pgxpool.Pool, schema string) *SupplierRepository {
+	return &SupplierRepository{
 		db:     db,
 		schema: schema,
 	}
 }
 
-func (r *ItemRepository) FindAll(ctx context.Context) ([]entity.Items, error) {
+func (r *SupplierRepository) FindAll(ctx context.Context) ([]entity.Suppliers, error) {
 	query := fmt.Sprintf(`
 		SELECT
 			id,
 			name,
-			description,
-			stock,
+			phone,
+			address,
 			created_at,
 			updated_at
-		FROM %s.items
+		FROM %s.suppliers
 		WHERE deleted_at IS NULL
 		ORDER BY id ASC
 	`, r.schema)
@@ -46,43 +46,43 @@ func (r *ItemRepository) FindAll(ctx context.Context) ([]entity.Items, error) {
 	}
 	defer rows.Close()
 
-	items := make([]entity.Items, 0)
+	suppliers := make([]entity.Suppliers, 0)
 
 	for rows.Next() {
-		var item entity.Items
+		var supplier entity.Suppliers
 
 		if err := rows.Scan(
-			&item.ID,
-			&item.Name,
-			&item.Description,
-			&item.Stock,
-			&item.CreatedAt,
-			&item.UpdatedAt,
+			&supplier.ID,
+			&supplier.Name,
+			&supplier.Phone,
+			&supplier.Address,
+			&supplier.CreatedAt,
+			&supplier.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
 
-		items = append(items, item)
+		suppliers = append(suppliers, supplier)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return items, nil
+	return suppliers, nil
 }
 
-func (r *ItemRepository) Create(
+func (r *SupplierRepository) Create(
 	ctx context.Context,
-	req dto.CreateItemRequest,
+	req dto.CreateSupplierRequest,
 ) error {
 
 	query := fmt.Sprintf(`
-		INSERT INTO %s.items
+		INSERT INTO %s.suppliers
 		(
 			name,
-			description,
-			stock
+			phone,
+			address
 		)
 		VALUES
 		(
@@ -96,36 +96,36 @@ func (r *ItemRepository) Create(
 		ctx,
 		query,
 		req.Name,
-		req.Description,
-		req.Stock,
+		req.Phone,
+		req.Address,
 	)
 
 	return err
 }
 
-func (r *ItemRepository) FindByID(ctx context.Context, id int) (*entity.Items, error) {
+func (r *SupplierRepository) FindByID(ctx context.Context, id int) (*entity.Suppliers, error) {
 	query := fmt.Sprintf(`
 		SELECT
 			id,
 			name,
-			description,
-			stock,
+			phone,
+			address,
 			created_at,
 			updated_at
-		FROM %s.items
+		FROM %s.suppliers
 		WHERE id = $1
 		AND deleted_at IS NULL
 	`, r.schema)
 
-	var item entity.Items
+	var supplier entity.Suppliers
 
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&item.ID,
-		&item.Name,
-		&item.Description,
-		&item.Stock,
-		&item.CreatedAt,
-		&item.UpdatedAt,
+		&supplier.ID,
+		&supplier.Name,
+		&supplier.Phone,
+		&supplier.Address,
+		&supplier.CreatedAt,
+		&supplier.UpdatedAt,
 	)
 
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -136,20 +136,20 @@ func (r *ItemRepository) FindByID(ctx context.Context, id int) (*entity.Items, e
 		return nil, err
 	}
 
-	return &item, nil
+	return &supplier, nil
 }
 
-func (r *ItemRepository) Update(
+func (r *SupplierRepository) Update(
 	ctx context.Context,
 	id int,
-	req dto.UpdateItemRequest,
+	req dto.UpdateSupplierRequest,
 ) error {
 	query := fmt.Sprintf(`
-		UPDATE %s.items
+		UPDATE %s.suppliers
 		SET
 			name = $1,
-			description = $2,
-			stock = $3,
+			phone = $2,
+			address = $3,
 			updated_at = NOW()
 		WHERE
 			id = $4
@@ -160,8 +160,8 @@ func (r *ItemRepository) Update(
 		ctx,
 		query,
 		req.Name,
-		req.Description,
-		req.Stock,
+		req.Phone,
+		req.Address,
 		id,
 	)
 
@@ -170,19 +170,19 @@ func (r *ItemRepository) Update(
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		return ErrItemNotFound
+		return ErrSupplierNotFound
 	}
 
 	return nil
 }
 
-func (r *ItemRepository) Delete(
+func (r *SupplierRepository) Delete(
 	ctx context.Context,
 	id int,
 ) error {
 
 	query := fmt.Sprintf(`
-		UPDATE %s.items
+		UPDATE %s.suppliers
 		SET
 			deleted_at = NOW(),
 			updated_at = NOW()
@@ -202,7 +202,7 @@ func (r *ItemRepository) Delete(
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		return ErrItemNotFound
+		return ErrSupplierNotFound
 	}
 
 	return nil
