@@ -114,7 +114,35 @@ func (r *CooperativeRepository) DeleteCustomer(ctx context.Context, id int64) er
 	return err
 }
 
+// mergeTransactionItems makes stock validation and mutation use the total quantity
+// when the same item was accidentally entered more than once.
+func mergeTransactionItems(items []entity.TransactionLine) ([]entity.TransactionLine, error) {
+	merged := make([]entity.TransactionLine, 0, len(items))
+	positions := make(map[int64]int, len(items))
+	for _, line := range items {
+		if position, exists := positions[line.ItemID]; exists {
+			current := &merged[position]
+			if current.UnitPrice != 0 && line.UnitPrice != 0 && current.UnitPrice != line.UnitPrice {
+				return nil, fmt.Errorf("harga barang %d berbeda pada baris yang berulang", line.ItemID)
+			}
+			if current.UnitPrice == 0 {
+				current.UnitPrice = line.UnitPrice
+			}
+			current.Quantity += line.Quantity
+			continue
+		}
+		positions[line.ItemID] = len(merged)
+		merged = append(merged, line)
+	}
+	return merged, nil
+}
+
 func (r *CooperativeRepository) CreateTransaction(ctx context.Context, req entity.CreateTransactionRequest) (entity.Transaction, error) {
+	var err error
+	req.Items, err = mergeTransactionItems(req.Items)
+	if err != nil {
+		return entity.Transaction{}, err
+	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return entity.Transaction{}, err
@@ -127,12 +155,7 @@ func (r *CooperativeRepository) CreateTransaction(ctx context.Context, req entit
 		return entity.Transaction{}, errors.New("supplier is required for a purchase")
 	}
 	var total int64
-	seenItems := make(map[int64]struct{}, len(req.Items))
 	for i := range req.Items {
-		if _, exists := seenItems[req.Items[i].ItemID]; exists {
-			return entity.Transaction{}, fmt.Errorf("item %d appears more than once", req.Items[i].ItemID)
-		}
-		seenItems[req.Items[i].ItemID] = struct{}{}
 		if req.TransactionType == "PURCHASE" {
 			var supplied bool
 			if err := tx.QueryRow(ctx, fmt.Sprintf(`SELECT EXISTS(SELECT 1 FROM %s.items WHERE id=$1 AND supplier_id=$2 AND deleted_at IS NULL)`, r.schema), req.Items[i].ItemID, req.SupplierID).Scan(&supplied); err != nil {
@@ -190,14 +213,15 @@ func (r *CooperativeRepository) CreateTransaction(ctx context.Context, req entit
 	}
 	for _, line := range req.Items {
 		var stock int
-		if err := tx.QueryRow(ctx, fmt.Sprintf(`SELECT stock FROM %s.items WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, r.schema), line.ItemID).Scan(&stock); err != nil {
+		var itemName string
+		if err := tx.QueryRow(ctx, fmt.Sprintf(`SELECT stock,name FROM %s.items WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, r.schema), line.ItemID).Scan(&stock, &itemName); err != nil {
 			return entity.Transaction{}, err
 		}
 		change := line.Quantity
 		if req.TransactionType == "SALE" {
 			change = -change
 			if stock+change < 0 {
-				return entity.Transaction{}, fmt.Errorf("insufficient stock for item %d", line.ItemID)
+				return entity.Transaction{}, fmt.Errorf("stok %s tidak cukup: tersedia %d, diminta %d", itemName, stock, line.Quantity)
 			}
 		}
 		_, err = tx.Exec(ctx, fmt.Sprintf(`INSERT INTO %s.transaction_items (transaction_id,item_id,quantity,unit_price,subtotal) VALUES ($1,$2,$3,$4,$5)`, r.schema), id, line.ItemID, line.Quantity, line.UnitPrice, line.Subtotal)
@@ -277,6 +301,11 @@ func (r *CooperativeRepository) Transactions(ctx context.Context, kind string) (
 }
 
 func (r *CooperativeRepository) UpdateTransaction(ctx context.Context, id int64, req entity.CreateTransactionRequest) (entity.Transaction, error) {
+	var err error
+	req.Items, err = mergeTransactionItems(req.Items)
+	if err != nil {
+		return entity.Transaction{}, err
+	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return entity.Transaction{}, err
@@ -344,14 +373,9 @@ func (r *CooperativeRepository) UpdateTransaction(ctx context.Context, id int64,
 		}
 	}
 
-	seen := map[int64]bool{}
 	var total int64
 	for i := range req.Items {
 		line := &req.Items[i]
-		if seen[line.ItemID] {
-			return entity.Transaction{}, errors.New("barang yang sama tidak boleh ditambahkan dua kali")
-		}
-		seen[line.ItemID] = true
 		if kind == "PURCHASE" {
 			var supplied bool
 			if err := tx.QueryRow(ctx, fmt.Sprintf(`SELECT EXISTS(SELECT 1 FROM %s.items WHERE id=$1 AND supplier_id=$2 AND deleted_at IS NULL)`, r.schema), line.ItemID, req.SupplierID).Scan(&supplied); err != nil {
@@ -412,7 +436,8 @@ func (r *CooperativeRepository) UpdateTransaction(ctx context.Context, id int64,
 	}
 	for _, line := range req.Items {
 		var stock int
-		if err := tx.QueryRow(ctx, fmt.Sprintf(`SELECT stock FROM %s.items WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, r.schema), line.ItemID).Scan(&stock); err != nil {
+		var itemName string
+		if err := tx.QueryRow(ctx, fmt.Sprintf(`SELECT stock,name FROM %s.items WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, r.schema), line.ItemID).Scan(&stock, &itemName); err != nil {
 			return entity.Transaction{}, errors.New("barang tidak ditemukan")
 		}
 		change := line.Quantity
@@ -420,7 +445,7 @@ func (r *CooperativeRepository) UpdateTransaction(ctx context.Context, id int64,
 			change = -line.Quantity
 		}
 		if stock+change < 0 {
-			return entity.Transaction{}, fmt.Errorf("stok tidak cukup untuk %d", line.ItemID)
+			return entity.Transaction{}, fmt.Errorf("stok %s tidak cukup: tersedia %d, diminta %d", itemName, stock, line.Quantity)
 		}
 		if _, err := tx.Exec(ctx, fmt.Sprintf(`INSERT INTO %s.transaction_items(transaction_id,item_id,quantity,unit_price,subtotal) VALUES($1,$2,$3,$4,$5)`, r.schema), id, line.ItemID, line.Quantity, line.UnitPrice, line.Subtotal); err != nil {
 			return entity.Transaction{}, err
