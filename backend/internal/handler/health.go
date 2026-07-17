@@ -11,6 +11,6 @@ func Health(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(map[string]any{
 		"status":  "ok",
-		"message": "Go Inventory Playground",
+		"message": "Go POS Playground",
 	})
 }

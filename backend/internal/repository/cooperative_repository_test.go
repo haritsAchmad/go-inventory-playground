@@ -3,7 +3,7 @@ package repository
 import (
 	"testing"
 
-	"go-inventory-playground/internal/entity"
+	"go-pos-playground/internal/entity"
 )
 
 func TestMergeTransactionItems(t *testing.T) {

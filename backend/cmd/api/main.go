@@ -5,11 +5,11 @@ import (
 	"log"
 	"net/http"
 
-	"go-inventory-playground/internal/config"
-	"go-inventory-playground/internal/database"
-	"go-inventory-playground/internal/handler"
-	"go-inventory-playground/internal/repository"
-	"go-inventory-playground/internal/router"
+	"go-pos-playground/internal/config"
+	"go-pos-playground/internal/database"
+	"go-pos-playground/internal/handler"
+	"go-pos-playground/internal/repository"
+	"go-pos-playground/internal/router"
 )
 
 func main() {

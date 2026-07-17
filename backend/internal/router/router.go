@@ -3,7 +3,7 @@ package router
 import (
 	"net/http"
 
-	"go-inventory-playground/internal/handler"
+	"go-pos-playground/internal/handler"
 )
 
 func New(

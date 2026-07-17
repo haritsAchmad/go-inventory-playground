@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	dto "go-inventory-playground/internal/dto/items"
-	"go-inventory-playground/internal/pkg/response"
-	"go-inventory-playground/internal/repository"
+	dto "go-pos-playground/internal/dto/items"
+	"go-pos-playground/internal/pkg/response"
+	"go-pos-playground/internal/repository"
 
 	"github.com/go-playground/validator/v10"
 )

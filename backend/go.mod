@@ -1,4 +1,4 @@
-module go-inventory-playground
+module go-pos-playground
 
 go 1.26.1
 
