@@ -1,6 +1,8 @@
-# Koperasi Operational Playground
+# Go POS Playground
 
-Aplikasi operasional koperasi hasil adaptasi modul SMS516, menggunakan REST API Go, PostgreSQL, dan frontend Nuxt.
+Aplikasi point of sale (POS) dan operasional koperasi hasil adaptasi modul SMS516, menggunakan REST API Go, PostgreSQL, dan frontend Nuxt.
+
+> **Catatan rename database:** nama konfigurasi baru adalah database `pos_playground` dan schema `go_pos_playground`. Jika sebelumnya memakai `inventory_playground` atau `go_inventory_playground`, rename atau migrasikan database/schema lama sebelum menjalankan aplikasi dengan konfigurasi baru.
 
 ## Fitur koperasi
 
@@ -93,7 +95,7 @@ Response
 ```json
 {
     "status": "ok",
-    "message": "Go Inventory Playground"
+    "message": "Go POS Playground"
 }
 ```
 
@@ -177,7 +179,7 @@ Response
 
 ## v1.0
 
-- Complete Inventory REST API
+- Complete POS REST API
 
 ---
 

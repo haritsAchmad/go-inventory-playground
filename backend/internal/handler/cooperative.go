@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"go-inventory-playground/internal/entity"
-	"go-inventory-playground/internal/pkg/response"
-	"go-inventory-playground/internal/repository"
+	"go-pos-playground/internal/entity"
+	"go-pos-playground/internal/pkg/response"
+	"go-pos-playground/internal/repository"
 )
 
 type CooperativeHandler struct {

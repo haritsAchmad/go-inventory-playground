@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"go-inventory-playground/internal/config"
+	"go-pos-playground/internal/config"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	dto "go-inventory-playground/internal/dto/items"
-	"go-inventory-playground/internal/entity"
+	dto "go-pos-playground/internal/dto/items"
+	"go-pos-playground/internal/entity"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

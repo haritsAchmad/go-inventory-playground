@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	dto "go-inventory-playground/internal/dto/suppliers"
-	"go-inventory-playground/internal/pkg/response"
-	"go-inventory-playground/internal/repository"
+	dto "go-pos-playground/internal/dto/suppliers"
+	"go-pos-playground/internal/pkg/response"
+	"go-pos-playground/internal/repository"
 )
 
 type SupplierHandler struct {
