@@ -1,196 +1,179 @@
 # Go POS Playground
 
-Aplikasi point of sale (POS) dan operasional koperasi hasil adaptasi modul SMS516, menggunakan REST API Go, PostgreSQL, dan frontend Nuxt.
+Aplikasi point of sale dan operasional koperasi dengan REST API Go, PostgreSQL, serta frontend Nuxt. Project ini menjadi playground untuk mempelajari Go Standard Library, layered architecture, transaksi database, autentikasi, dan otorisasi.
 
-> **Catatan rename database:** nama konfigurasi baru adalah database `pos_playground` dan schema `go_pos_playground`. Jika sebelumnya memakai `inventory_playground` atau `go_inventory_playground`, rename atau migrasikan database/schema lama sebelum menjalankan aplikasi dengan konfigurasi baru.
-
-## Fitur koperasi
+## Fitur
 
 - Dashboard penjualan, pembelian, piutang, dan stok
-- Master barang, kategori, merek, satuan, supplier, serta metode bayar
-- Pelanggan member dan non-member; pelanggan `UMUM` tersedia otomatis
+- Master barang, kategori, merek, satuan, supplier, dan metode pembayaran
+- Pelanggan member dan non-member; pelanggan `UMUM` dibuat otomatis
 - Kasir/penjualan dengan pengurangan stok atomik
 - Pembelian/penerimaan barang dengan penambahan stok atomik
-- Histori transaksi, piutang, dan pembayaran piutang
-- Autentikasi JWT dan otorisasi berbasis role (`admin`, `cashier`, `viewer`)
+- Histori transaksi, pembatalan, piutang, dan pembayaran piutang
+- Import/export Excel dan laporan PDF
+- Login JWT dengan password bcrypt
+- Otorisasi berbasis role: `admin`, `cashier`, dan `viewer`
+- CRUD pengguna khusus admin
+- Soft delete untuk barang, pelanggan, dan supplier
+
+## Tech stack
+
+- Go 1.26 dan Standard Library `net/http`
+- PostgreSQL dan pgx v5
+- Nuxt 3 dan Vue 3
+- bcrypt dan JWT HS256
+- ExcelJS dan SweetAlert2
+
+## Persiapan
+
+Pastikan Go, Node.js, npm, dan PostgreSQL tersedia. Buat database `pos_playground`, lalu salin konfigurasi environment:
+
+```powershell
+Copy-Item backend/.env.example backend/.env
+```
+
+Konfigurasi penting:
+
+```env
+APP_PORT=8080
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=pos_playground
+DB_SCHEMA=go_pos_playground
+DB_SSLMODE=disable
+
+JWT_SECRET=ganti-dengan-random-secret-minimal-32-karakter
+JWT_ISSUER=go-pos-playground
+JWT_EXPIRY_MINUTES=480
+
+INITIAL_ADMIN_NAME=Administrator
+INITIAL_ADMIN_EMAIL=admin@example.com
+INITIAL_ADMIN_PASSWORD=ganti-dengan-password-kuat
+```
+
+`INITIAL_ADMIN_*` hanya digunakan ketika tabel `users` masih kosong. Setelah akun admin pertama berhasil dibuat, hapus `INITIAL_ADMIN_PASSWORD` dari `.env`.
+
+Database schema dan tabel dibuat otomatis ketika backend dijalankan. Jika memakai nama database/schema versi lama, migrasikan terlebih dahulu ke `pos_playground` dan `go_pos_playground`.
 
 ## Menjalankan aplikasi
 
+Terminal backend:
+
 ```powershell
+Set-Location backend
 go run ./cmd/api
+```
+
+Terminal frontend:
+
+```powershell
+npm.cmd --prefix frontend install
 npm.cmd --prefix frontend run dev
 ```
 
-Frontend tersedia di `http://localhost:3000` dan meneruskan request `/api` ke backend pada `http://localhost:8080`.
+Frontend tersedia di `http://localhost:3000`. Request `/api` diproksikan ke backend. Pastikan `APP_PORT` sama dengan target proxy di `frontend/nuxt.config.ts`.
 
-> Project ini dibuat sebagai laboratorium backend untuk mempelajari Go dari dasar menggunakan Standard Library tanpa framework terlebih dahulu, kemudian berkembang secara bertahap mengikuti kebutuhan.
+## Authentication
 
----
+Login menggunakan akun admin awal:
 
-# Tech Stack
+```http
+POST /auth/login
+Content-Type: application/json
 
-- Go
-- PostgreSQL 18
-- pgx v5
-- Air (Hot Reload)
+{
+  "email": "admin@example.com",
+  "password": "password-admin"
+}
+```
 
----
+Endpoint selain health check dan login membutuhkan header berikut:
 
-# Current Features
+```http
+Authorization: Bearer <access_token>
+```
 
-## Completed
+### Role dan akses
 
-- [x] HTTP Server
-- [x] Health Endpoint
-- [x] PostgreSQL Connection
-- [x] Environment Configuration
-- [x] GET /items
-- [x] POST /items
+| Fitur | Admin | Cashier | Viewer |
+|---|:---:|:---:|:---:|
+| Dashboard dan baca barang | Ya | Ya | Ya |
+| CRUD barang | Ya | Ya | Tidak |
+| CRUD pelanggan | Ya | Ya | Tidak |
+| CRUD supplier | Ya | Ya | Tidak |
+| Membuat merek dari form barang | Ya | Ya | Tidak |
+| Transaksi dan pembayaran piutang | Ya | Ya | Tidak |
+| Kelola seluruh master data | Ya | Tidak | Tidak |
+| CRUD pengguna | Ya | Tidak | Tidak |
 
-## Next Milestones
+Admin tidak dapat mengubah role, menonaktifkan, atau menghapus akun sendiri. Status dan role terbaru diperiksa ke database pada setiap request, sehingga perubahan akses langsung berlaku untuk token yang sudah diterbitkan.
 
-- [ ] Validation
-- [ ] PUT /items
-- [ ] DELETE /items
-- [ ] Search
-- [ ] Pagination
-- [ ] Sorting
-- [ ] Transaction
-- [ ] Middleware
-- [x] Authentication (JWT)
-- [ ] Unit Test
-- [ ] Docker
-- [ ] Redis
+## Endpoint utama
 
----
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| `GET` | `/health` | Health check publik |
+| `POST` | `/auth/login` | Login |
+| `GET` | `/auth/me` | Profil pengguna aktif |
+| `GET, POST` | `/users` | Daftar dan tambah pengguna |
+| `PUT, DELETE` | `/users/{id}` | Ubah dan hapus pengguna |
+| `GET, POST` | `/items` | Daftar dan tambah barang |
+| `GET, PUT, DELETE` | `/items/{id}` | Detail, ubah, dan soft delete barang |
+| `GET, POST` | `/suppliers` | Daftar dan tambah supplier |
+| `GET, PUT, DELETE` | `/suppliers/{id}` | Detail, ubah, dan soft delete supplier |
+| `GET, POST` | `/customers` | Daftar dan tambah pelanggan |
+| `GET, PUT, DELETE` | `/customers/{id}` | Detail, ubah, dan soft delete pelanggan |
+| `GET` | `/dashboard` | Ringkasan operasional |
+| `GET, POST` | `/transactions` | Histori dan pembuatan transaksi |
+| `PUT` | `/transactions/{id}` | Ubah transaksi |
+| `POST` | `/transactions/{id}/void` | Batalkan transaksi |
+| `GET` | `/debts` | Daftar piutang |
+| `POST` | `/debts/{id}/payments` | Catat pembayaran piutang |
+| `GET, POST, PUT, DELETE` | `/masters/{name}` | Kelola master data |
 
-# Project Structure
+## Struktur project
 
 ```text
-cmd/
-└── api/
-
-internal/
-├── config/
-├── database/
-├── dto/
-├── entity/
-├── handler/
-├── repository/
-└── router/
-
-migrations/
+.
+|-- backend/
+|   |-- cmd/api/                # application entry point
+|   `-- internal/
+|       |-- auth/               # JWT issuance dan validation
+|       |-- config/             # environment configuration
+|       |-- database/           # PostgreSQL dan migration
+|       |-- dto/                # request DTO
+|       |-- entity/             # domain entities
+|       |-- handler/            # HTTP handlers
+|       |-- middleware/         # authentication dan authorization
+|       |-- repository/         # database access
+|       `-- router/             # routes dan role policy
+|-- frontend/                   # Nuxt operational console
+|-- docs/
+|-- migrations/
+|-- CHANGELOG.md
+`-- README.md
 ```
 
----
+## Testing dan build
 
-# API Endpoints
+```powershell
+Set-Location backend
+go test ./...
 
-## Health Check
-
-GET /health
-
-Response
-
-```json
-{
-    "status": "ok",
-    "message": "Go POS Playground"
-}
+Set-Location ../frontend
+npm.cmd run build
 ```
 
----
+## Roadmap
 
-## Get Items
+- Pagination, sorting, dan pencarian di API
+- Refresh token atau session rotation
+- Audit log aktivitas pengguna
+- Pemulihan data soft delete
+- Docker dan deployment configuration
+- Redis untuk caching atau session support
 
-GET /items
-
-Response
-
-```json
-[
-    {
-        "id": 1,
-        "name": "Mouse Wireless",
-        "description": "Mouse kantor untuk testing API",
-        "stock": 10
-    }
-]
-```
-
----
-
-## Create Item
-
-POST /items
-
-Request
-
-```json
-{
-    "name": "Laptop",
-    "description": "ThinkPad T14",
-    "stock": 8
-}
-```
-
-Response
-
-```json
-{
-    "message": "item created successfully"
-}
-```
-
----
-
-# Roadmap
-
-## v0.1
-
-- HTTP Server
-- Health Endpoint
-
-## v0.2
-
-- PostgreSQL Connection
-- GET /items
-- POST /items
-
-## v0.3
-
-- Request Validation
-
-## v0.4
-
-- Update Item
-
-## v0.5
-
-- Delete Item
-
-## v0.6
-
-- Search & Pagination
-
-## v0.7
-
-- JWT Authentication
-
-## v1.0
-
-- Complete POS REST API
-
----
-
-# Learning Goals
-
-Project ini dibuat untuk mempelajari:
-
-- Go Standard Library
-- REST API
-- PostgreSQL
-- Clean Project Structure
-- Git Workflow
-- Backend Best Practices
-- Layered Architecture
+Riwayat perubahan tersedia di [CHANGELOG.md](CHANGELOG.md).
