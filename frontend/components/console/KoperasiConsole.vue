@@ -17,9 +17,6 @@ const allNav = [
 const nav = computed(()=>allNav.filter(([key])=>key!=='users'?currentUser.value?.role!=='viewer'||['dashboard','items'].includes(key):currentUser.value?.role==='admin'))
 const routeKey = () => allNav.find((item)=>item[2]===route.path)?.[0] || 'dashboard'
 const active = ref(routeKey())
-const dashboardYear = ref(new Date().getFullYear())
-const dashboardMonth = ref(new Date().getMonth()+1)
-const years = Array.from({length:5},(_,i)=>new Date().getFullYear()-i)
 const loading = ref(false)
 const submitting = ref(false)
 const error = ref('')
@@ -28,7 +25,6 @@ const data = reactive<any>({ dashboard:{},items:[],customers:[],suppliers:[],cat
 const userForm = reactive<any>({ name:'',email:'',password:'',role:'cashier',active:true })
 const userModal = ref(false)
 const editingUser = ref<number|null>(null)
-const itemForm = reactive<any>({ sku:'',name:'',description:'',supplier_id:null,category_id:null,brand_id:null,brand_name:'',unit_id:null,stock:0,cost:0,price:0 })
 const customerForm = reactive<any>({ code:'',name:'',phone:'',address:'' })
 const supplierForm = reactive<any>({ code:'',name:'',phone:'',address:'' })
 const transactionForm = reactive<any>({ customer_id:null,supplier_id:null,payment_method_id:null,paid_amount:0,notes:'',items:[{item_id:null,quantity:1,unit_price:0}] })
@@ -39,42 +35,21 @@ const expandedTransaction = ref<number|null>(null)
 const selectedReceipt = ref<any>(null)
 const printMode = ref<null|'monthly'|'receipt'>(null)
 const debtPayments = reactive<Record<number, number>>({})
-const itemImport = ref<HTMLInputElement|null>(null)
 const customerImport = ref<HTMLInputElement|null>(null)
 const supplierImport = ref<HTMLInputElement|null>(null)
 const modal = ref<null|'item'|'customer'|'supplier'>(null)
 const filters = reactive({ itemSearch:'', category:'', stock:'', customerSearch:'', supplierSearch:'', historySearch:'', historyType:'', historyStatus:'' })
-const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
-const maxSales = computed(()=>Math.max(...(data.dashboard.monthly_sales||[0]),1))
+const { dashboardYear,dashboardMonth,years,months,maxSales,monthlyReportTransactions,monthlyReportTotal,dashboardPeriods,dailyTotals,loadDashboard } = useDashboard(api,data)
+const { itemForm,itemImport,transactionItems,filteredItems,loadItems,saveItem,openItem,editItem,cancelItem,removeItem,chooseItem } = useItems({api,data,active,transactionForm,filters,editing,modal,submit,findOrCreateMaster})
 
 const money = (v:number) => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(v||0)
-const itemById = (id:number) => data.items.find((v:any)=>v.id===Number(id))
 const lineTotal = computed(()=>transactionForm.items.reduce((sum:number,line:any)=>sum+(Number(line.quantity)||0)*(Number(line.unit_price)||0),0))
 const changeAmount = computed(()=>Number(transactionForm.paid_amount||0)-lineTotal.value)
-const transactionItems = computed(()=>active.value==='purchase'?data.items.filter((v:any)=>Number(v.supplier_id)===Number(transactionForm.supplier_id)):data.items)
-const filteredItems = computed(()=>data.items.filter((v:any)=>{
-  const query=filters.itemSearch.toLowerCase();const matchesQuery=!query||[v.sku,v.name,v.category_name,v.brand_name].some(x=>String(x||'').toLowerCase().includes(query));
-  const matchesCategory=!filters.category||String(v.category_id)===filters.category;
-  const matchesStock=!filters.stock||(filters.stock==='empty'?Number(v.stock)===0:filters.stock==='low'?Number(v.stock)>0&&Number(v.stock)<=5:Number(v.stock)>5);
-  return matchesQuery&&matchesCategory&&matchesStock
-}))
 const filteredCustomers = computed(()=>data.customers.filter((v:any)=>!filters.customerSearch||[v.code,v.name,v.phone].some(x=>String(x||'').toLowerCase().includes(filters.customerSearch.toLowerCase()))))
 const filteredSuppliers = computed(()=>data.suppliers.filter((v:any)=>!filters.supplierSearch||[v.code,v.name,v.phone,v.address].some(x=>String(x||'').toLowerCase().includes(filters.supplierSearch.toLowerCase()))))
 const filteredTransactions = computed(()=>data.transactions.filter((v:any)=>{const query=filters.historySearch.toLowerCase();const matchesSearch=!query||[v.invoice_no,v.customer_name,v.supplier_name,v.notes].some(x=>String(x||'').toLowerCase().includes(query));const matchesType=!filters.historyType||v.transaction_type===filters.historyType;const matchesStatus=!filters.historyStatus||(filters.historyStatus==='ACTIVE'?v.status==='ACTIVE':filters.historyStatus==='VOID'?v.status==='VOID':v.payment_status===filters.historyStatus);return matchesSearch&&matchesType&&matchesStatus}))
-const jakartaYearMonth=(value:string)=>{const parts=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'numeric',timeZone:'Asia/Jakarta'}).formatToParts(new Date(value));return {year:Number(parts.find(v=>v.type==='year')?.value),month:Number(parts.find(v=>v.type==='month')?.value)}}
-const monthlyReportTransactions = computed(()=>data.transactions.filter((v:any)=>{const date=jakartaYearMonth(v.transaction_date);return v.transaction_type==='SALE'&&v.status==='ACTIVE'&&date.year===dashboardYear.value&&date.month===dashboardMonth.value}))
-const monthlyReportTotal = computed(()=>monthlyReportTransactions.value.reduce((sum:number,v:any)=>sum+Number(v.grand_total||0),0))
-const dashboardPeriods = computed(()=>[
-  {label:'Hari Ini',value:data.dashboard.today||{}},
-  {label:'Kemarin',value:data.dashboard.yesterday||{}},
-  {label:`${months[dashboardMonth.value-1]} ${dashboardYear.value}`,value:data.dashboard.selected_month||{}},
-  {label:`Tahun ${dashboardYear.value}`,value:data.dashboard.selected_year||{}},
-])
-const dailyTotals = computed(()=>(data.dashboard.daily||[]).reduce((sum:any,row:any)=>({income:sum.income+Number(row.income||0),expense:sum.expense+Number(row.expense||0),debt:sum.debt+Number(row.debt||0),net_income:sum.net_income+Number(row.net_income||0)}),{income:0,expense:0,debt:0,net_income:0}))
 const jakartaDateTime = (value:string) => new Intl.DateTimeFormat('id-ID',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date(value))
 
-async function loadDashboard(){data.dashboard=await api.dashboard(dashboardYear.value,dashboardMonth.value)}
-async function loadItems(){data.items=await api.items()}
 async function loadCustomers(){data.customers=await api.customers();if(!transactionForm.customer_id)transactionForm.customer_id=data.customers.find((c:any)=>c.code==='UMUM')?.id}
 async function loadSuppliers(){data.suppliers=await api.suppliers()}
 async function loadMasters(){const [categories,brands,units,payment_methods]=await Promise.all([api.masters('categories'),api.masters('brands'),api.masters('units'),api.masters('payment_methods')]);Object.assign(data,{categories,brands,units,payment_methods})}
@@ -97,12 +72,6 @@ watch(dashboardYear,()=>runLoaders([loadDashboard]))
 watch(dashboardMonth,()=>runLoaders([loadDashboard]))
 watch(()=>customerForm.phone,v=>{const clean=String(v||'').replace(/\D/g,'');if(v!==clean)customerForm.phone=clean})
 watch(()=>supplierForm.phone,v=>{const clean=String(v||'').replace(/\D/g,'');if(v!==clean)supplierForm.phone=clean})
-function nullableNumber(v:any){return v?Number(v):null}
-async function saveItem(){const saved=await submit(async()=>{const brandID=await findOrCreateMaster('brands',data.brands,itemForm.brand_name);const payload={...itemForm,supplier_id:nullableNumber(itemForm.supplier_id),category_id:nullableNumber(itemForm.category_id),brand_id:brandID,unit_id:nullableNumber(itemForm.unit_id),stock:Number(itemForm.stock),cost:Number(itemForm.cost),price:Number(itemForm.price)};return editing.item?api.updateItem(editing.item,payload):api.createItem(payload)},editing.item?'Barang berhasil diubah':'Barang berhasil ditambahkan',[loadItems]);if(saved)cancelItem()}
-function openItem(v:any=null){cancelItem(false);if(v){editing.item=v.id;Object.assign(itemForm,v)}modal.value='item'}
-function editItem(v:any){openItem(v)}
-function cancelItem(close=true){editing.item=null;Object.assign(itemForm,{sku:'',name:'',description:'',supplier_id:null,category_id:null,brand_id:null,brand_name:'',unit_id:null,stock:0,cost:0,price:0});if(close)modal.value=null}
-async function removeItem(v:any){const result=await Swal.fire({icon:'warning',title:`Hapus ${v.name}?`,text:'Data yang sudah dihapus tidak dapat dikembalikan.',showCancelButton:true,confirmButtonText:'Hapus',cancelButtonText:'Batal',confirmButtonColor:'#b8322a'});if(result.isConfirmed)await submit(()=>api.deleteItem(v.id),'Barang berhasil dihapus',[loadItems])}
 async function saveParty(kind:'customer'|'supplier'){const form=kind==='customer'?customerForm:supplierForm;const id=editing[kind];if(await submit(()=>kind==='customer'?(id?api.updateCustomer(id,form):api.createCustomer(form)):(id?api.updateSupplier(id,form):api.createSupplier(form)),`${kind==='customer'?'Pelanggan':'Supplier'} berhasil ${id?'diubah':'ditambahkan'}`,kind==='customer'?[loadCustomers]:[loadSuppliers]))closeParty(kind)}
 function openParty(kind:'customer'|'supplier',v:any=null){if(v?.code==='UMUM')return;editing[kind]=v?.id||null;const form=kind==='customer'?customerForm:supplierForm;Object.keys(form).forEach(k=>form[k]='');if(v)Object.assign(form,v);modal.value=kind}
 function editParty(kind:'customer'|'supplier',v:any){openParty(kind,v)}
@@ -115,7 +84,6 @@ async function voidTransaction(v:any){const stockEffect=v.transaction_type==='SA
 async function saveMaster(){const id=editing.master;if(await submit(()=>id?api.updateMaster(masterForm.table,id,masterForm):api.createMaster(masterForm.table,masterForm),`Data berhasil ${id?'diubah':'ditambahkan'}`,[loadMasters,loadItems])){editing.master=null;masterForm.name=''}}
 function editMaster(table:string,v:any){masterForm.table=table;masterForm.name=v.name;editing.master=v.id}
 async function deleteMaster(table:string,v:any){if(confirm(`Hapus ${v.name}?`))await submit(()=>api.deleteMaster(table,v.id),'Data berhasil dihapus',[loadMasters,loadItems],false)}
-function chooseItem(line:any){const item=itemById(line.item_id);if(item)line.unit_price=active.value==='purchase'?item.cost:item.price}
 function addLine(){transactionForm.items.push({item_id:null,quantity:1,unit_price:0})}
 function resetTransaction(context: string=active.value){editing.transaction=null;transactionContext.value=context==='purchase'?'purchase':'sale';Object.assign(transactionForm,{customer_id:context==='sale'?data.customers.find((c:any)=>c.code==='UMUM')?.id||null:null,supplier_id:null,payment_method_id:null,paid_amount:0,notes:'',items:[{item_id:null,quantity:1,unit_price:0}]})}
 function editTransaction(v:any){if(v.status!=='ACTIVE')return;const context=v.transaction_type==='SALE'?'sale':'purchase';transactionContext.value=context;editing.transaction=v.id;Object.assign(transactionForm,{customer_id:v.customer_id,supplier_id:v.supplier_id,payment_method_id:v.payment_method_id,paid_amount:v.amount_received,notes:v.notes||'',items:v.items.map((line:any)=>({item_id:line.item_id,quantity:line.quantity,unit_price:line.unit_price}))});navigateTo(context==='sale'?'/kasir':'/pembelian')}
