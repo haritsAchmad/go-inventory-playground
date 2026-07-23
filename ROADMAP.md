@@ -16,12 +16,14 @@ Roadmap ini menggambarkan arah pengembangan Go POS Playground saat ini. Priorita
 - TypeScript quality gate untuk frontend Nuxt
 - Cleanup activity tracker dan lifecycle sliding session
 - Unit test untuk expiry, refresh window, dan activity throttle
+- Integration test PostgreSQL untuk konsistensi stok penjualan dan pembelian
+- Integration test untuk rollback edit, pembatalan transaksi, dan pembayaran piutang
 - Penghapusan frontend Vue/Vite lama setelah migrasi Nuxt
 - Seed generator untuk data demo yang dapat direproduksi
 
 ## 🟨 In Progress
 
-- Perluasan automated test untuk business flow utama
+- Belum ada item aktif; prioritas berikutnya dipilih dari bagian Planned
 
 ## ⬜ Planned
 

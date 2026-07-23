@@ -25,6 +25,8 @@ Semua perubahan penting pada backend dan frontend Go POS Playground dicatat di f
 - Unit test untuk issuance, parsing, dan validasi konfigurasi JWT.
 - Quality gate `npm run typecheck` menggunakan TypeScript dan `vue-tsc`.
 - Unit test frontend untuk parsing expiry JWT, keputusan refresh session, dan throttle activity tracker.
+- Integration test PostgreSQL terisolasi untuk penjualan, pembelian, rollback stok, edit, pembatalan transaksi, dan pembayaran piutang.
+- Guard integration test yang hanya menerima database playground serta membuat dan membersihkan schema `go_pos_test_*`.
 
 ### Changed
 

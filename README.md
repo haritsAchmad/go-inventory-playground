@@ -183,11 +183,19 @@ Frontend memisahkan pemuatan data dan operasi berdasarkan domain dashboard, bara
 Set-Location backend
 go test ./...
 
+# Integration test transaksi memakai schema PostgreSQL sementara yang
+# otomatis dihapus setelah test selesai.
+$env:GO_POS_INTEGRATION_TESTS='1'
+go test ./internal/repository -run Integration -count=1
+Remove-Item Env:GO_POS_INTEGRATION_TESTS
+
 Set-Location ../frontend
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run build
 ```
+
+Integration test hanya menerima database bernama `playground` atau `pos_playground`, lalu membuat schema acak dengan prefix `go_pos_test_`. Schema aplikasi utama dan database lain tidak digunakan sebagai target test maupun cleanup.
 
 ## Seed data demo
 
