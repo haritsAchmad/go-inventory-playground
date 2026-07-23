@@ -2,6 +2,8 @@ import { defineNuxtConfig } from 'nuxt/config'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
+  // Allows CI or a second terminal to verify the app while the dev server owns .nuxt.
+  buildDir: process.env.NUXT_BUILD_DIR || '.nuxt',
   devtools: { enabled: true },
   app: {
     head: {

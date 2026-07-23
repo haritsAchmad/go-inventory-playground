@@ -175,7 +175,7 @@ GET /transactions?type=SALE&page=2&per_page=25
 }
 ```
 
-Request tanpa `page` dan `per_page` tetap mengembalikan array seperti sebelumnya agar frontend operasional, pilihan barang transaksi, dan proses export tetap kompatibel. Integrasi pagination pada tabel frontend akan dilakukan bersama pencarian, sorting, dan filtering server-side.
+Request tanpa `page` dan `per_page` tetap mengembalikan array seperti sebelumnya agar pilihan barang transaksi dan proses export tetap lengkap. Tabel frontend menerapkan pagination pada hasil filter lokal, dengan pilihan 10, 20, atau 50 baris. Migrasi tabel ke pagination server-side akan dilakukan bersama pencarian, sorting, dan filtering API agar pencarian tidak terbatas pada satu halaman.
 
 ## Struktur project
 

@@ -30,9 +30,12 @@ Semua perubahan penting pada backend dan frontend Go POS Playground dicatat di f
 - Pagination backend opt-in untuk barang, supplier, pelanggan, transaksi, piutang, dan pengguna.
 - Metadata pagination reusable dengan validasi halaman, default 20 baris, dan batas maksimal 100 baris.
 - Unit test parser pagination dan integration test PostgreSQL untuk batas halaman serta kombinasi filter tipe transaksi.
+- Kontrol pagination frontend reusable untuk barang, pelanggan, supplier, histori, piutang, dan pengguna.
+- Unit test pagination frontend untuk slicing, batas halaman, perubahan filter, dan penyesuaian jumlah data.
 
 ### Changed
 
+- Kontrol jumlah baris dipindahkan ke area filter, pagination memakai nomor halaman, dan tombol refresh ditempatkan dekat data yang diperbarui.
 - Expiry JWT dan activity throttle diekstrak menjadi utility session yang dapat diuji.
 - Activity tracker membersihkan DOM listener dan page hook ketika plugin mengalami hot reload.
 - Frontend Vue/Vite lama dihapus setelah seluruh entrypoint aktif dipastikan menggunakan Nuxt.

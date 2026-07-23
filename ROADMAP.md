@@ -19,6 +19,7 @@ Roadmap ini menggambarkan arah pengembangan Go POS Playground saat ini. Priorita
 - Integration test PostgreSQL untuk konsistensi stok penjualan dan pembelian
 - Integration test untuk rollback edit, pembatalan transaksi, dan pembayaran piutang
 - Backend pagination opt-in dengan metadata dan batas ukuran halaman
+- Pagination frontend responsif untuk tabel operasional
 - Penghapusan frontend Vue/Vite lama setelah migrasi Nuxt
 - Seed generator untuk data demo yang dapat direproduksi
 
