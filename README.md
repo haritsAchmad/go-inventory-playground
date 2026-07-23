@@ -213,12 +213,7 @@ go run ./cmd/seed `
 
 ## Roadmap
 
-- Pagination, sorting, dan pencarian di API
-- Refresh token atau session rotation
-- Audit log aktivitas pengguna
-- Pemulihan data soft delete
-- Docker dan deployment configuration
-- Redis untuk caching atau session support
+Pengembangan berikutnya berfokus pada pagination dan filtering API, peningkatan test coverage, session management, observability, serta deployment. Status lengkap dan prioritas terkini tersedia di [ROADMAP.md](ROADMAP.md).
 
 ## AI-assisted development
 
@@ -228,4 +223,4 @@ Project ini dirancang, diarahkan, diuji, dan direview oleh Harits Achmad Fauzan.
 
 Copyright (c) 2026 Harits Achmad Fauzan. Project ini dilisensikan menggunakan [MIT License](LICENSE).
 
-Riwayat perubahan tersedia di [CHANGELOG.md](CHANGELOG.md).
+Riwayat perubahan tersedia di [CHANGELOG.md](CHANGELOG.md), sedangkan arah pengembangan tersedia di [ROADMAP.md](ROADMAP.md).
