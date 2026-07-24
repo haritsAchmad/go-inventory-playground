@@ -12,23 +12,26 @@ const { formatNumber, setCurrency } = useCurrencyInput()
 const { downloadExcel, downloadWorkbook, parseExcel } = useExcelData()
 const allNav = [
   ['dashboard', 'Dashboard', '/'], ['items', 'Barang', '/barang'], ['customers', 'Pelanggan', '/pelanggan'], ['suppliers', 'Supplier', '/supplier'],
-  ['sale', 'Kasir', '/kasir'], ['purchase', 'Pembelian', '/pembelian'], ['history', 'Histori', '/histori'], ['debts', 'Piutang', '/piutang'], ['masters', 'Pengaturan Barang', '/pengaturan'], ['users', 'Pengguna', '/pengguna'],
+  ['sale', 'Kasir', '/kasir'], ['purchase', 'Pembelian', '/pembelian'], ['history', 'Histori', '/histori'], ['debts', 'Piutang', '/piutang'], ['masters', 'Pengaturan Barang', '/pengaturan'], ['users', 'Pengguna', '/pengguna'], ['audit', 'Audit Log', '/audit'],
 ]
-const nav = computed(()=>allNav.filter(([key])=>key!=='users'?currentUser.value?.role!=='viewer'||['dashboard','items'].includes(key):currentUser.value?.role==='admin'))
+const nav = computed(()=>allNav.filter(([key])=>{
+  if(['users','audit'].includes(key))return currentUser.value?.role==='admin'
+  return currentUser.value?.role!=='viewer'||['dashboard','items'].includes(key)
+}))
 const routeKey = () => allNav.find((item)=>item[2]===route.path)?.[0] || 'dashboard'
 const active = ref(routeKey())
 const loading = ref(false)
 const submitting = ref(false)
 const error = ref('')
 const notice = ref('')
-const data = reactive<any>({ dashboard:{},items:[],customers:[],suppliers:[],categories:[],brands:[],units:[],payment_methods:[],transactions:[],debts:[],users:[] })
+const data = reactive<any>({ dashboard:{},items:[],customers:[],suppliers:[],categories:[],brands:[],units:[],payment_methods:[],transactions:[],debts:[],users:[],auditLogs:[] })
 const editing = reactive<any>({ item:null, customer:null, supplier:null, master:null, transaction:null })
 const printMode = ref<null|'monthly'|'receipt'>(null)
 const modal = ref<null|'item'|'customer'|'supplier'>(null)
-const filters = reactive({ itemSearch:'', category:'', stock:'', customerSearch:'', supplierSearch:'', historySearch:'', historyType:'', historyStatus:'' })
+const filters = reactive({ itemSearch:'', category:'', stock:'', customerSearch:'', supplierSearch:'', historySearch:'', historyType:'', historyStatus:'', auditSearch:'', auditAction:'' })
 const sorting = reactive({
   items:'name:asc', customers:'name:asc', suppliers:'name:asc',
-  transactions:'transaction_date:desc', users:'name:asc', daily:'date:asc',
+  transactions:'transaction_date:desc', users:'name:asc', daily:'date:asc', audit:'created_at:desc',
 })
 const money = (v:number) => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(v||0)
 const { dashboardYear,dashboardMonth,years,months,maxSales,monthlyReportTransactions,monthlyReportTotal,dashboardPeriods,dailyTotals,loadDashboard } = useDashboard(api,data)
@@ -49,12 +52,19 @@ const sortableTransactions = computed(() => filteredTransactions.value.map((tran
 const sortedTransactions = useSorting<any>(sortableTransactions, () => sorting.transactions)
 const sortedUsers = useSorting<any>(() => data.users, () => sorting.users)
 const sortedDaily = useSorting<any>(() => data.dashboard.daily || [], () => sorting.daily)
+const filteredAuditLogs = computed(() => data.auditLogs.filter((entry:any) => {
+  const query = filters.auditSearch.toLowerCase()
+  const matchesSearch = !query || [entry.user_name,entry.user_email,entry.entity_type,entry.path].some(value => String(value||'').toLowerCase().includes(query))
+  return matchesSearch && (!filters.auditAction || entry.action === filters.auditAction)
+}))
+const sortedAuditLogs = useSorting<any>(filteredAuditLogs, () => sorting.audit)
 const itemPage = reactive(usePagination<any>(sortedItems))
 const customerPage = reactive(usePagination<any>(sortedCustomers))
 const supplierPage = reactive(usePagination<any>(sortedSuppliers))
 const transactionPage = reactive(usePagination<any>(sortedTransactions))
 const debtPage = reactive(usePagination<any>(() => data.debts))
 const userPage = reactive(usePagination<any>(sortedUsers))
+const auditPage = reactive(usePagination<any>(sortedAuditLogs, 20))
 
 const jakartaDateTime = (value:string) => new Intl.DateTimeFormat('id-ID',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date(value))
 
@@ -62,7 +72,7 @@ async function runLoaders(loaders:Array<()=>Promise<void>>){loading.value=true;e
 async function loadActiveRoute(){
   const loaders:Record<string,Array<()=>Promise<void>>>={
     dashboard:[loadDashboard,loadTransactions,loadDebts],items:[loadItems,loadSuppliers,loadMasters],customers:[loadCustomers],suppliers:[loadSuppliers],
-    sale:[loadItems,loadCustomers,loadMasters],purchase:[loadItems,loadSuppliers,loadMasters],history:[loadTransactions],debts:[loadDebts],masters:[loadMasters],users:[loadUsers],
+    sale:[loadItems,loadCustomers,loadMasters],purchase:[loadItems,loadSuppliers,loadMasters],history:[loadTransactions],debts:[loadDebts],masters:[loadMasters],users:[loadUsers],audit:[async()=>{data.auditLogs=await api.auditLogs()}],
   }
   await runLoaders(loaders[active.value]||loaders.dashboard)
 }
@@ -146,7 +156,8 @@ onMounted(async()=>{try{if(api.token.value){currentUser.value=await api.me();if(
       <header><div><p class="eyebrow">SIG KOPERASI · GO + NUXT</p><h1>{{ nav.find(n=>n[0]===active)?.[1] }}</h1></div><div class="user-actions"><span><b>{{currentUser.name}}</b><small>{{currentUser.role}}</small></span><button class="soft" @click="logout">Keluar</button></div></header>
       <p v-if="error" class="alert error">{{ error }}</p><p v-if="notice" class="alert success">{{ notice }}</p>
 
-      <section v-if="active==='users'" class="panel"><div class="page-heading"><div><h2>Daftar Pengguna</h2><p>Kelola akun dan hak akses aplikasi.</p></div><div class="heading-actions"><PageSizeSelect v-model="userPage.pageSize" @update:model-value="userPage.setPage(1)"/><button class="soft" @click="loadActiveRoute">{{loading?'Memuat…':'Refresh'}}</button><button class="primary" @click="openUser()">+ Tambah Pengguna</button></div></div><div class="table-wrap"><table><thead><tr><SortableTh v-model="sorting.users" field="name">Nama</SortableTh><SortableTh v-model="sorting.users" field="email">Email</SortableTh><SortableTh v-model="sorting.users" field="role" class="table-center">Role</SortableTh><SortableTh v-model="sorting.users" field="active" default-direction="desc" class="table-center">Status</SortableTh><th class="table-center">Aksi</th></tr></thead><tbody><tr v-for="user in userPage.pageItems" :key="user.id"><td><b>{{user.name}}</b><small v-if="String(user.id)===String(currentUser.id)"> · akun Anda</small></td><td>{{user.email}}</td><td class="table-center"><span class="role-badge">{{user.role}}</span></td><td class="table-center">{{user.active?'Aktif':'Nonaktif'}}</td><td class="table-actions"><button class="soft" @click="openUser(user)">Ubah</button><button class="danger" :disabled="String(user.id)===String(currentUser.id)" @click="removeUser(user)">Hapus</button></td></tr></tbody></table></div><PaginationControls v-bind="userPage" @update:page="userPage.setPage"/></section>
+      <section v-if="active==='audit'" class="panel"><div class="page-heading"><div><h2>Audit Log</h2><p>Riwayat perubahan data dan aksi pengguna. Isi request sensitif tidak disimpan.</p></div><div class="heading-actions"><PageSizeSelect v-model="auditPage.pageSize" @update:model-value="auditPage.setPage(1)"/><button class="soft" @click="loadActiveRoute">{{loading?'Memuat…':'Refresh'}}</button></div></div><div class="history-filters audit-filters"><input v-model="filters.auditSearch" type="search" placeholder="Cari pengguna, modul, atau path..."><select v-model="filters.auditAction"><option value="">Semua aksi</option><option value="CREATE">Tambah</option><option value="UPDATE">Ubah</option><option value="DELETE">Hapus</option><option value="VOID">Batalkan transaksi</option><option value="PAYMENT">Pembayaran</option></select><button class="soft" @click="Object.assign(filters,{auditSearch:'',auditAction:''})">Reset</button></div><div class="table-wrap"><table><thead><tr><SortableTh v-model="sorting.audit" field="created_at" default-direction="desc">Waktu</SortableTh><SortableTh v-model="sorting.audit" field="user_name">Pengguna</SortableTh><SortableTh v-model="sorting.audit" field="action">Aksi</SortableTh><SortableTh v-model="sorting.audit" field="entity_type">Modul / ID</SortableTh><SortableTh v-model="sorting.audit" field="status_code" class="table-center">Hasil</SortableTh><th>Alamat IP</th></tr></thead><tbody><tr v-for="entry in auditPage.pageItems" :key="entry.id"><td>{{jakartaDateTime(entry.created_at)}}</td><td><strong>{{entry.user_name}}</strong><small>{{entry.user_email}}</small></td><td><span class="role-badge">{{entry.action}}</span><small>{{entry.method}} {{entry.path}}</small></td><td>{{entry.entity_type}}<small v-if="entry.entity_id">ID {{entry.entity_id}}</small></td><td class="table-center" :class="entry.status_code<400?'income':'expense'">{{entry.status_code<400?'Berhasil':'Ditolak'}} · {{entry.status_code}}</td><td>{{entry.ip_address||'—'}}</td></tr><tr v-if="!auditPage.totalItems"><td colspan="6" class="empty">Belum ada aktivitas yang cocok.</td></tr></tbody></table></div><PaginationControls v-bind="auditPage" @update:page="auditPage.setPage"/></section>
+      <section v-else-if="active==='users'" class="panel"><div class="page-heading"><div><h2>Daftar Pengguna</h2><p>Kelola akun dan hak akses aplikasi.</p></div><div class="heading-actions"><PageSizeSelect v-model="userPage.pageSize" @update:model-value="userPage.setPage(1)"/><button class="soft" @click="loadActiveRoute">{{loading?'Memuat…':'Refresh'}}</button><button class="primary" @click="openUser()">+ Tambah Pengguna</button></div></div><div class="table-wrap"><table><thead><tr><SortableTh v-model="sorting.users" field="name">Nama</SortableTh><SortableTh v-model="sorting.users" field="email">Email</SortableTh><SortableTh v-model="sorting.users" field="role" class="table-center">Role</SortableTh><SortableTh v-model="sorting.users" field="active" default-direction="desc" class="table-center">Status</SortableTh><th class="table-center">Aksi</th></tr></thead><tbody><tr v-for="user in userPage.pageItems" :key="user.id"><td><b>{{user.name}}</b><small v-if="String(user.id)===String(currentUser.id)"> · akun Anda</small></td><td>{{user.email}}</td><td class="table-center"><span class="role-badge">{{user.role}}</span></td><td class="table-center">{{user.active?'Aktif':'Nonaktif'}}</td><td class="table-actions"><button class="soft" @click="openUser(user)">Ubah</button><button class="danger" :disabled="String(user.id)===String(currentUser.id)" @click="removeUser(user)">Hapus</button></td></tr></tbody></table></div><PaginationControls v-bind="userPage" @update:page="userPage.setPage"/></section>
       <template v-else-if="active==='dashboard'">
         <section class="panel dashboard-toolbar"><div><strong>Periode Laporan</strong><small>Ringkasan bulan dan tahun mengikuti pilihan ini.</small></div><select v-model.number="dashboardMonth"><option v-for="(month,i) in months" :value="i+1">{{month}}</option></select><select v-model.number="dashboardYear"><option v-for="year in years" :value="year">{{year}}</option></select><button class="soft" @click="loadActiveRoute">{{loading?'Memuat…':'Refresh'}}</button><button class="primary" @click="exportMonthlyReport">Export Laporan Excel</button></section>
         <section class="period-stats"><article v-for="period in dashboardPeriods"><div><small>{{period.label}}</small><b>Pemasukan</b><strong class="income">{{money(period.value.income)}}</strong></div><div><b>Pengeluaran</b><strong class="expense">{{money(period.value.expense)}}</strong></div><div><b>Piutang Dibuat</b><strong>{{money(period.value.debt)}}</strong></div></article></section>

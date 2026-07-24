@@ -12,12 +12,57 @@ import (
 	"go-pos-playground/internal/config"
 	"go-pos-playground/internal/database"
 	"go-pos-playground/internal/entity"
+	"go-pos-playground/internal/pkg/listquery"
 	"go-pos-playground/internal/pkg/pagination"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
+
+func TestAuditLogIdentitySnapshotIntegration(t *testing.T) {
+	f := newTransactionFixture(t)
+	q := pgx.Identifier{f.schema}.Sanitize()
+	var userID int64
+	if err := f.db.QueryRow(f.ctx, fmt.Sprintf(`
+		INSERT INTO %s.users(name,email,password_hash,role)
+		VALUES('Audit User','audit@example.com','unused','cashier')
+		RETURNING id
+	`, q)).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	legacyStatements := []struct {
+		query string
+		args  []any
+	}{
+		{fmt.Sprintf(`ALTER TABLE %s.audit_logs DROP COLUMN user_name`, q), nil},
+		{fmt.Sprintf(`ALTER TABLE %s.audit_logs DROP COLUMN user_email`, q), nil},
+		{fmt.Sprintf(`ALTER TABLE %s.audit_logs ADD CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY(user_id) REFERENCES %s.users(id) ON DELETE RESTRICT`, q, q), nil},
+		{fmt.Sprintf(`INSERT INTO %s.audit_logs(user_id,action,entity_type,entity_id,method,path,status_code) VALUES($1,'UPDATE','items','42','PUT','/items/42',200)`, q), []any{userID}},
+	}
+	for _, statement := range legacyStatements {
+		if _, err := f.db.Exec(f.ctx, statement.query, statement.args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = godotenv.Load("../../.env")
+	if err := database.Migrate(f.ctx, f.db, f.schema); err != nil {
+		t.Fatalf("upgrade legacy audit schema: %v", err)
+	}
+	repo := NewAuditRepository(f.db, f.schema)
+	if _, err := f.db.Exec(f.ctx, fmt.Sprintf(`DELETE FROM %s.users WHERE id=$1`, q), userID); err != nil {
+		t.Fatalf("audit history must not prevent user deletion after migration: %v", err)
+	}
+	result, err := repo.ListPage(f.ctx, pagination.Params{Page: 1, PerPage: 10}, listquery.Params{
+		Search: "audit@example.com", Sort: "created_at", Order: "desc", Values: map[string]string{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Meta.Total != 1 || len(result.Items) != 1 || result.Items[0].UserName != "Audit User" {
+		t.Fatalf("unexpected audit result after user deletion: %+v", result)
+	}
+}
 
 func TestSessionRotationIntegration(t *testing.T) {
 	f := newTransactionFixture(t)

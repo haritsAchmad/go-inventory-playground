@@ -15,8 +15,10 @@ func New(
 	supplierHandler *handler.SupplierHandler,
 	cooperativeHandler *handler.CooperativeHandler,
 	authHandler *handler.AuthHandler,
+	auditHandler *handler.AuditHandler,
 	tokens *auth.Manager,
 	authRepo *repository.AuthRepository,
+	auditRepo *repository.AuditRepository,
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -44,10 +46,11 @@ func New(
 	})
 	mux.HandleFunc("/auth/me", middleware.Authenticate(tokens, authRepo, authHandler.Me))
 	protect := func(next http.HandlerFunc, roles ...string) http.HandlerFunc {
-		return middleware.Authenticate(tokens, authRepo, middleware.Authorize(next, roles...))
+		return middleware.Authenticate(tokens, authRepo, middleware.Audit(auditRepo, middleware.Authorize(next, roles...)))
 	}
 	mux.HandleFunc("/users", protect(authHandler.Users, "admin"))
 	mux.HandleFunc("/users/", protect(authHandler.UserDetail, "admin"))
+	mux.HandleFunc("/audit-logs", protect(auditHandler.List, "admin"))
 	mux.HandleFunc("/items", func(
 		w http.ResponseWriter,
 		r *http.Request,

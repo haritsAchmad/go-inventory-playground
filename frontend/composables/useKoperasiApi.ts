@@ -61,6 +61,7 @@ export function useKoperasiApi() {
     logout: () => request('/auth/logout', { method: 'POST' }),
     me: () => request<any>('/auth/me'),
     users: () => request<any[]>('/users'),
+    auditLogs: () => request<any[]>('/audit-logs'),
     createUser: (body: any) => request('/users', { method: 'POST', body }),
     updateUser: (id: number, body: any) => request(`/users/${id}`, { method: 'PUT', body }),
     deleteUser: (id: number) => request(`/users/${id}`, { method: 'DELETE' }),

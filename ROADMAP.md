@@ -25,6 +25,7 @@ Roadmap ini menggambarkan arah pengembangan Go POS Playground saat ini. Priorita
 - Pencarian, sorting, dan filtering API untuk barang, supplier, pelanggan, transaksi, piutang, dan pengguna
 - Sorting frontend melalui header kolom tabel operasional
 - Refresh token rotation dan session server-side dengan logout/revocation
+- Audit log aktivitas mutasi pengguna dengan halaman monitoring admin
 
 ## 🟨 In Progress
 
@@ -32,7 +33,6 @@ Roadmap ini menggambarkan arah pengembangan Go POS Playground saat ini. Priorita
 
 ## ⬜ Planned
 
-- Audit log aktivitas pengguna
 - Pemulihan data yang menggunakan soft delete
 - Benchmark dan performance baseline
 - Docker dan deployment configuration

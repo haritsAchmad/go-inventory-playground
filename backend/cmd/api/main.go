@@ -41,6 +41,8 @@ func main() {
 		log.Fatal(err)
 	}
 	authHandler := handler.NewAuthHandler(authRepo, tokens, refreshTokens)
+	auditRepo := repository.NewAuditRepository(db, cfg.DBSchema)
+	auditHandler := handler.NewAuditHandler(auditRepo)
 
 	itemRepo := repository.NewItemRepository(db, cfg.DBSchema)
 	itemHandler := handler.NewItemHandler(itemRepo)
@@ -49,7 +51,7 @@ func main() {
 	cooperativeRepo := repository.NewCooperativeRepository(db, cfg.DBSchema)
 	cooperativeHandler := handler.NewCooperativeHandler(cooperativeRepo)
 
-	r := router.New(itemHandler, supplierHandler, cooperativeHandler, authHandler, tokens, authRepo)
+	r := router.New(itemHandler, supplierHandler, cooperativeHandler, authHandler, auditHandler, tokens, authRepo, auditRepo)
 
 	log.Println("Server running at :" + cfg.AppPort)
 

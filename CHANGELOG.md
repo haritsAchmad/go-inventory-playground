@@ -42,6 +42,8 @@ Semua perubahan penting pada backend dan frontend Go POS Playground dicatat di f
 - Sorting reusable melalui klik header kolom dengan indikator arah pada tabel barang, pelanggan, supplier, histori, dan pengguna.
 - Session server-side dengan refresh token acak, penyimpanan hash, rotasi sekali pakai, masa berlaku configurable, dan endpoint logout.
 - Unit test sorting frontend dan refresh-token manager backend.
+- Audit log append-only untuk mutasi pengguna dengan snapshot identitas, aksi, target, status HTTP, alamat IP, dan user-agent tanpa menyimpan request body.
+- Endpoint dan halaman audit khusus admin dengan search, filter aksi, pagination, dan sorting melalui header tabel.
 
 ### Changed
 
@@ -63,6 +65,7 @@ Semua perubahan penting pada backend dan frontend Go POS Playground dicatat di f
 
 ### Fixed
 
+- Migrasi upgrade audit log kini menambahkan snapshot identitas yang belum ada pada tabel versi awal dan melepas foreign key yang dapat menghambat penghapusan pengguna.
 - Heading konten pada halaman master data dibedakan dari judul route agar hierarki halaman tidak terlihat berulang.
 - Mempertahankan data transaksi yang akan diubah ketika berpindah dari halaman histori ke halaman kasir atau pembelian.
 - Memperbaiki pattern kode/SKU agar valid pada browser yang menggunakan regular expression mode `v`.
@@ -73,6 +76,7 @@ Semua perubahan penting pada backend dan frontend Go POS Playground dicatat di f
 - File environment lokal dihapus dari seluruh histori Git dan histori bersih diverifikasi menggunakan Gitleaks.
 - Refresh token lama langsung dicabut setelah rotasi dan tidak dapat digunakan ulang.
 - Logout mencabut refresh session server-side.
+- Audit log tidak menyimpan password, token, atau isi request sensitif dan tidak menghalangi penghapusan akun pengguna.
 - Respons `401` membersihkan token frontend dan mengarahkan pengguna kembali ke halaman login.
 - Admin tidak dapat mengubah role, menonaktifkan, atau menghapus akun sendiri.
 - Token milik pengguna yang dinonaktifkan atau dihapus langsung ditolak.

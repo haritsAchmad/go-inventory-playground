@@ -124,6 +124,7 @@ panjang tidak dapat dibaca JavaScript:
 | Transaksi dan pembayaran piutang | Ya | Ya | Tidak |
 | Kelola seluruh master data | Ya | Tidak | Tidak |
 | CRUD pengguna | Ya | Tidak | Tidak |
+| Melihat audit log | Ya | Tidak | Tidak |
 
 Admin tidak dapat mengubah role, menonaktifkan, atau menghapus akun sendiri. Status dan role terbaru diperiksa ke database pada setiap request, sehingga perubahan akses langsung berlaku untuk token yang sudah diterbitkan.
 
@@ -138,6 +139,7 @@ Admin tidak dapat mengubah role, menonaktifkan, atau menghapus akun sendiri. Sta
 | `GET` | `/auth/me` | Profil pengguna aktif |
 | `GET, POST` | `/users` | Daftar dan tambah pengguna |
 | `PUT, DELETE` | `/users/{id}` | Ubah dan hapus pengguna |
+| `GET` | `/audit-logs` | Audit perubahan data khusus admin |
 | `GET, POST` | `/items` | Daftar dan tambah barang |
 | `GET, PUT, DELETE` | `/items/{id}` | Detail, ubah, dan soft delete barang |
 | `GET, POST` | `/suppliers` | Daftar dan tambah supplier |
